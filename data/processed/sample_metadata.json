@@ -1,0 +1,64 @@
+{
+  "created_utc": "2026-11-14T07:01:02+00:00",
+  "seed": 42,
+  "sources": {
+    "advbench": "https://raw.githubusercontent.com/llm-attacks/llm-attacks/main/data/advbench/harmful_behaviors.csv",
+    "jailbreakbench": "hf:JailbreakBench/JBB-Behaviors",
+    "fortress": "hf:ScaleAI/fortress_public"
+  },
+  "raw_sizes": {
+    "advbench": 520,
+    "advbench_after_dedup": 480,
+    "jbb_harmful": 100,
+    "fortress": 500
+  },
+  "sample_counts": [
+    {
+      "source_dataset": "advbench",
+      "prompt_type": "harmful",
+      "n": 50
+    },
+    {
+      "source_dataset": "fortress",
+      "prompt_type": "benign",
+      "n": 50
+    },
+    {
+      "source_dataset": "fortress",
+      "prompt_type": "harmful",
+      "n": 50
+    },
+    {
+      "source_dataset": "jailbreakbench",
+      "prompt_type": "harmful",
+      "n": 30
+    }
+  ],
+  "fortress_exclusions": [
+    {
+      "fortress_id": "1052",
+      "risk_domain": "Criminal & Financial Illicit Activities",
+      "reason": "adversarial_prompt already base64-encoded"
+    },
+    {
+      "fortress_id": "595",
+      "risk_domain": "Chemical, Biological, Radiological, Nuclear, and Explosive (CBRNE)",
+      "reason": "adversarial_prompt already reversed-encoded"
+    },
+    {
+      "fortress_id": "716",
+      "risk_domain": "Chemical, Biological, Radiological, Nuclear, and Explosive (CBRNE)",
+      "reason": "adversarial_prompt already reversed-encoded"
+    },
+    {
+      "fortress_id": "458",
+      "risk_domain": "Political Violence & Terrorism",
+      "reason": "adversarial_prompt already reversed-encoded"
+    }
+  ],
+  "notes": [
+    "AdvBench has no category labels -> 'uncategorized'.",
+    "FORTRESS pairs whose prompt is already obfuscated (base64/reversed) or longer than 5000 chars are replaced by a pair from the same risk domain; replacement pairs get ids >= the requested pair count.",
+    "FORTRESS adversarial prompts already contain jailbreak framing; encoding them is a stacked attack. Benign twins share pair_id."
+  ]
+}

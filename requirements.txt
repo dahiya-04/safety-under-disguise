@@ -1,0 +1,23 @@
+# Core
+datasets>=3.0
+huggingface_hub>=0.30
+pandas>=2.2
+pyyaml>=6.0
+python-dotenv>=1.0
+tqdm>=4.66
+
+# Model / judge APIs (OpenAI-compatible: HF router, Goedel)
+openai>=1.40
+
+# Translation (local NLLB for the multilingual encoding; torch CPU build is enough)
+torch
+transformers>=4.40
+sentencepiece
+sacrebleu>=2.4
+deep-translator>=1.11   # optional Google backend
+
+# Analysis
+matplotlib>=3.8
+
+# Dev
+pytest>=8.0

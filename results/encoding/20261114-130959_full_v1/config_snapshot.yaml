@@ -1,0 +1,74 @@
+cli_args:
+  config: configs/encoding_attacks.yaml
+  encoding: all
+  model: all
+  sample_size: null
+  concurrency: null
+  run_name: full_v1
+  dry_run: false
+  check_models: false
+  no_analysis: false
+config:
+  experiment:
+    name: encoding_attacks
+    seed: 42
+    output_dir: results/encoding
+  dataset:
+    prompts_csv: data/processed/encoding_prompts.csv
+  encodings:
+  - name: plaintext
+  - name: base64
+  - name: rot13
+  - name: leetspeak
+  - name: homoglyph
+  - name: multilingual
+    params:
+      target_language: hi
+      translation_backend: nllb
+      cache_path: data/cache/translations.json
+      back_translate: false
+  target_models:
+    defaults:
+      base_url: https://router.huggingface.co/v1
+      api_key_env: HF_TOKEN
+      temperature: 0.0
+      max_tokens: 512
+      system_prompt: null
+      timeout_s: 120
+      max_retries: 4
+    models:
+    - id: meta-llama/Llama-3.1-8B-Instruct
+      price_per_m_input: 0.05
+      price_per_m_output: 0.05
+    - id: meta-llama/Llama-3.3-70B-Instruct
+      price_per_m_input: 0.6
+      price_per_m_output: 0.6
+    - id: Qwen/Qwen2.5-72B-Instruct
+      price_per_m_input: 0.9
+      price_per_m_output: 0.9
+  judge:
+    kind: routed
+    primary_share: 0.5
+    budget_path: data/cache/judge_budget.json
+    defaults:
+      temperature: 0.0
+      max_tokens: 1024
+      max_retries: 3
+    judges:
+    - name: goedel
+      model: deepseek/deepseek-v4.1-flash
+      base_url: https://api.goedelmachines.com/v1
+      api_key_env: GOEDEL_API_KEY
+      cache_path: data/cache/judge_cache.jsonl
+      daily_call_cap: 1500
+      concurrency: 3
+    - name: hf
+      model: deepseek-ai/DeepSeek-V4.1-Flash-1017
+      base_url: https://router.huggingface.co/v1
+      api_key_env: HF_TOKEN
+      cache_path: data/cache/judge_cache_hf.jsonl
+      daily_call_cap: null
+      concurrency: 6
+  runtime:
+    concurrency: 8
+    response_cache: data/cache/responses.jsonl

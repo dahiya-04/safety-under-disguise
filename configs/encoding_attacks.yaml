@@ -1,0 +1,91 @@
+# Encoding / obfuscation attack evaluation — llm-safety-bench
+# Run:  python -m src.encoding.evaluator --config configs/encoding_attacks.yaml
+
+experiment:
+  name: encoding_attacks
+  seed: 42
+  output_dir: results/encoding
+
+dataset:
+  # Built by scripts/download_datasets.py (180 prompts: AdvBench 50, JBB 30, FORTRESS 50 pairs)
+  prompts_csv: data/processed/encoding_prompts.csv
+
+encodings:
+  # Order here = order in tables/plots. plaintext is the control condition.
+  - name: plaintext
+  - name: base64
+  - name: rot13
+  - name: leetspeak
+  - name: homoglyph
+  # Translations are pre-computed by scripts/translate_prompts.py (cached); the judge
+  # reads Hindi responses directly (back_translate: false).
+  - name: multilingual
+    params:
+      target_language: hi
+      translation_backend: nllb
+      cache_path: data/cache/translations.json
+      back_translate: false
+
+target_models:
+  # Served through the Hugging Face Inference Providers router (OpenAI-compatible).
+  # price_per_m_* are ROUGH PLACEHOLDERS for --dry-run estimates only —
+  # update them from the pricing panel on each model's HF page.
+  defaults:
+    base_url: https://router.huggingface.co/v1
+    api_key_env: HF_TOKEN
+    temperature: 0.0
+    max_tokens: 512
+    system_prompt: null          # test default behaviour, no system prompt
+    timeout_s: 120
+    max_retries: 4
+  # Design: Llama-8B vs Llama-70B = scale (same family);
+  #         Llama-70B vs Qwen-72B   = model family (same size).
+  # Model selection history (2026-11-14):
+  #  - Qwen2.5-7B-Instruct: not served by any enabled HF provider -> replaced by Llama-3.1-8B.
+  #  - openai/gpt-oss-20b: dropped. Reasoning model; on 7/30 smoke prompts (long FORTRESS
+  #    prompts, mostly base64/rot13) it used the entire budget reasoning and returned no
+  #    answer, at both max_tokens=2048 and 4096. Replaced by Llama-3.3-70B.
+  models:
+    - id: meta-llama/Llama-3.1-8B-Instruct
+      price_per_m_input: 0.05
+      price_per_m_output: 0.05
+    - id: meta-llama/Llama-3.3-70B-Instruct
+      price_per_m_input: 0.60
+      price_per_m_output: 0.60
+    - id: Qwen/Qwen2.5-72B-Instruct
+      price_per_m_input: 0.90
+      price_per_m_output: 0.90
+
+judge:
+  # The same judge model (DeepSeek-V4.1-Flash) served by two endpoints. Each item
+  # is assigned by a deterministic hash (~primary_share to the first judge), so
+  # every model x encoding cell gets the same judge mix (no confounding).
+  # Inter-endpoint agreement on 45 items (scripts/compare_judges.py, 2026-11-14):
+  # label agreement 93%, Cohen's kappa 0.91, decoding agreement 87%.
+  kind: routed
+  primary_share: 0.5
+  budget_path: data/cache/judge_budget.json
+  defaults:
+    temperature: 0.0
+    max_tokens: 1024             # reasoning model; retries double this if output is cut off
+    max_retries: 3
+  judges:
+    - name: goedel
+      model: deepseek/deepseek-v4.1-flash
+      base_url: https://api.goedelmachines.com/v1
+      api_key_env: GOEDEL_API_KEY
+      cache_path: data/cache/judge_cache.jsonl
+      # Limit 450k output tokens/day at ~240 per call = ~1,875 calls; cap leaves 20% headroom.
+      daily_call_cap: 1500
+      concurrency: 3             # Goedel allows 4 in flight, shared with the free tier
+    - name: hf
+      model: deepseek-ai/DeepSeek-V4.1-Flash-1017   # pinned snapshot
+      base_url: https://router.huggingface.co/v1
+      api_key_env: HF_TOKEN
+      cache_path: data/cache/judge_cache_hf.jsonl
+      daily_call_cap: null
+      concurrency: 6
+
+runtime:
+  concurrency: 8                 # parallel (generate + judge) jobs; per-judge limits above still apply
+  response_cache: data/cache/responses.jsonl
