@@ -46,7 +46,10 @@ from matplotlib.patches import Patch  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 EXCLUDED_LABELS = {"GENERATION_ERROR", "JUDGE_ERROR", "NO_ANSWER"}
-ENCODING_ORDER = ["plaintext", "base64", "rot13", "leetspeak", "homoglyph", "multilingual_hi"]
+ENCODING_ORDER = ["plaintext", "base64", "rot13", "leetspeak", "homoglyph",
+                  "multilingual_hi", "multilingual_bn", "multilingual_zu"]
+LANGUAGE_NAMES = {"hi": "hindi", "bn": "bengali", "zu": "zulu", "ta": "tamil", "ur": "urdu", "gd": "gaelic",
+                  "or": "odia", "as": "assamese", "sat": "santali"}
 SUBSETS = {"all": "All harmful", "direct": "AdvBench + JBB", "fortress": "FORTRESS"}
 N_BOOT = 2000
 SEED = 42
@@ -318,7 +321,10 @@ def fig_heatmap(asr: pd.DataFrame, models, encodings, path: Path) -> None:
 
 
 def _enc_label(e: str) -> str:
-    return "hindi" if e == "multilingual_hi" else e
+    if e.startswith("multilingual_"):
+        code = e.split("_", 1)[1]
+        return LANGUAGE_NAMES.get(code, code)
+    return e
 
 
 def fig_decoding_vs_asr(asr: pd.DataFrame, models, encodings, path: Path) -> None:

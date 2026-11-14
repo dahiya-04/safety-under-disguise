@@ -1,0 +1,77 @@
+# Experiment 2 - language-resource ladder (follow-up to H6)
+# Does attack success rise as the language gets lower-resource?
+#   Hindi (mid, done in full_v1) -> Bengali (mid, control) -> Zulu (low; replicates Yong et al. 2023)
+#
+# Kept separate from the main experiment: own output folder (results/encoding_lowres).
+# Response / judge / translation caches are SHARED with configs/encoding_attacks.yaml on
+# purpose, so plaintext and Hindi rows are re-used from full_v1 at no extra cost.
+#
+# Translations: python scripts/hf_translate_job.py submit --langs bn,zu   (HF GPU job)
+#               python scripts/hf_translate_job.py fetch
+# Pilot:        python -m src.encoding.evaluator --config configs/encoding_lowres.yaml --sample-size 30 --run-name pilot
+# Full:         python -m src.encoding.evaluator --config configs/encoding_lowres.yaml --run-name full
+
+experiment:
+  name: encoding_lowres
+  seed: 42
+  output_dir: results/encoding_lowres
+
+dataset:
+  prompts_csv: data/processed/encoding_prompts.csv
+
+encodings:
+  - name: plaintext
+  - name: multilingual
+    params: {target_language: hi, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+  - name: multilingual
+    params: {target_language: bn, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+  - name: multilingual
+    params: {target_language: zu, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+
+target_models:
+  defaults:
+    base_url: https://router.huggingface.co/v1
+    api_key_env: HF_TOKEN
+    temperature: 0.0
+    max_tokens: 512
+    system_prompt: null
+    timeout_s: 120
+    max_retries: 4
+  models:
+    - id: meta-llama/Llama-3.1-8B-Instruct
+      price_per_m_input: 0.05
+      price_per_m_output: 0.05
+    - id: meta-llama/Llama-3.3-70B-Instruct
+      price_per_m_input: 0.60
+      price_per_m_output: 0.60
+    - id: Qwen/Qwen2.5-72B-Instruct
+      price_per_m_input: 0.90
+      price_per_m_output: 0.90
+
+judge:
+  kind: routed
+  primary_share: 0.5
+  budget_path: data/cache/judge_budget.json
+  defaults:
+    temperature: 0.0
+    max_tokens: 1024
+    max_retries: 3
+  judges:
+    - name: goedel
+      model: deepseek/deepseek-v4.1-flash
+      base_url: https://api.goedelmachines.com/v1
+      api_key_env: GOEDEL_API_KEY
+      cache_path: data/cache/judge_cache.jsonl
+      daily_call_cap: 1500
+      concurrency: 3
+    - name: hf
+      model: deepseek-ai/DeepSeek-V4.1-Flash-1017
+      base_url: https://router.huggingface.co/v1
+      api_key_env: HF_TOKEN
+      cache_path: data/cache/judge_cache_hf.jsonl
+      daily_call_cap: null
+      concurrency: 6
+
+runtime:
+  concurrency: 8
+  response_cache: data/cache/responses.jsonl
