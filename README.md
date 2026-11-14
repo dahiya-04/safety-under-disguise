@@ -152,6 +152,25 @@ The same judge model served by two endpoints agrees on **93%** of labels (Cohen'
 4. **Report datasets separately.** Pooled numbers hide that FORTRESS role-play is far more effective than any encoding.
 5. **Follow up on low-resource languages.** Hindi on the small model is the only effect in the hypothesised direction (+10 pp, 95% CI [+2, +18]). It needs a larger sample and more languages.
 
+## How this compares with prior work
+
+Earlier studies found that encoded and translated prompts **do** break safety training. Our main result points the other way, although the mechanism they identified still holds.
+
+| Study | Models | What they found | Compared with ours |
+|---|---|---|---|
+| **Wei et al. (2023)**, *Jailbroken* | GPT-4, Claude v1.3, GPT-3.5 Turbo | Base64 is their main example of *mismatched generalisation*: an input format the model can read but safety training never covered. GPT-3.5 Turbo struggled to read base64, while GPT-4 could read it and was less safe. | **Agrees on scale:** this is the same pattern as our Llama-8B vs Llama-70B (H2). **Differs on outcome:** in our run, base64 *lowered* attack success on every model. |
+| **Yuan et al. (2024)**, *GPT-4 Is Too Smart To Be Safe* (CipherChat) | GPT-4, GPT-3.5 Turbo, Claude 2 | Some ciphers bypassed GPT-4's safety almost 100% of the time in several domains. More capable models were *more* vulnerable; smaller ones often could not follow the cipher. | **Same mechanism** (being able to read the cipher creates the risk). **Different size of effect:** their ciphers greatly increased harm; ours mostly reduced it. |
+| **Yong et al. (2023)**, *Low-Resource Languages Jailbreak GPT-4* | GPT-4 | Translating AdvBench prompts into low-resource languages (e.g. Zulu, Scottish Gaelic) succeeded about half the time, vs under 1% in English; combining languages reached 79%. **High- and mid-resource languages were much less effective.** | **Consistent.** Hindi is mid-resource, and we see only a small, non-significant effect on the small model and none on the large ones. |
+
+**Why the results may differ:**
+
+1. **Newer models.** Prior work tested 2023 models. Llama-3.x and Qwen2.5 were trained after these attacks were published and may include encoded examples in their safety data. This suggests the problem has been partly fixed, not that the earlier findings were wrong.
+2. **Simpler attacks.** CipherChat added a role-play system prompt and worked examples of the cipher. We used a single plain instruction ("decode and follow"), which is a weaker attack.
+3. **Different languages.** The strongest multilingual effects were in *low*-resource languages. Hindi is mid-resource.
+4. **We measure understanding.** We count a prompt the model fails to decode as a failed attack and record it separately, so incomprehension is never mistaken for robustness.
+
+**Takeaway:** the mechanism holds: capability creates the vulnerability, and smaller models are protected by not understanding. On these 2024 open-weight models, however, simple encodings no longer increase attack success. A natural follow-up is to test low-resource languages (e.g. Zulu) and CipherChat-style prompts on the same models.
+
 ## Limitations
 
 - 130 harmful and 50 benign prompts per cell, so CIs are wide (about ±8 pp overall, ±14 pp on FORTRESS alone).
@@ -257,7 +276,8 @@ results/encoding/*_full_v1/        published aggregate results of the main run
 ## Roadmap
 
 - [x] Module 1: encoding / obfuscation attacks
-- [ ] Larger sample and more low-resource languages (follow-up to H6)
+- [ ] Larger sample and low-resource languages such as Zulu (follow-up to H6; cf. Yong et al.)
+- [ ] CipherChat-style prompts (role-play + cipher examples) on the same models
 - [ ] Human annotation of a judge-validation subset
 - [ ] Module 2: toxicity & bias evaluation
 
@@ -271,7 +291,9 @@ Code is released under the [MIT License](LICENSE). The benchmark datasets (AdvBe
 
 ## References
 
-- Wei, Haghtalab & Steinhardt (2023). *Jailbroken: How Does LLM Safety Training Fail?*
+- Wei, Haghtalab & Steinhardt (2023). *Jailbroken: How Does LLM Safety Training Fail?* [arXiv:2307.02483](https://arxiv.org/abs/2307.02483)
+- Yuan et al. (2024). *GPT-4 Is Too Smart To Be Safe: Stealthy Chat with LLMs via Cipher.* ICLR 2024. [arXiv:2308.06463](https://arxiv.org/abs/2308.06463)
+- Yong, Menghini & Bach (2023). *Low-Resource Languages Jailbreak GPT-4.* [arXiv:2310.02446](https://arxiv.org/abs/2310.02446)
 - Zou et al. (2023). *Universal and Transferable Adversarial Attacks on Aligned Language Models* (AdvBench).
 - Chao et al. (2024). *JailbreakBench.*
 - Scale AI (2025). *FORTRESS.*
