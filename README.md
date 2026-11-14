@@ -2,12 +2,12 @@
 
 # Safety Under Disguise
 
-**Do encoded prompts (base64, ROT13, leetspeak, homoglyphs, Hindi) slip past LLM safety guardrails?**
+**Do encoded prompts (base64, ROT13, leetspeak, homoglyphs) or other languages (Hindi, Bengali, Zulu) slip past LLM safety guardrails?**
 
 ![python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
-![responses](https://img.shields.io/badge/judged%20responses-3%2C240-1baf7a)
+![responses](https://img.shields.io/badge/judged%20responses-4%2C320-1baf7a)
 ![models](https://img.shields.io/badge/models-Llama%208B%20·%20Llama%2070B%20·%20Qwen%2072B-eb6834)
-![tests](https://img.shields.io/badge/tests-62%20passing-008300)
+![tests](https://img.shields.io/badge/tests-67%20passing-008300)
 ![license](https://img.shields.io/badge/license-MIT-6250d6)
 
 <img src="docs/figures/fig2_decoding_vs_asr.png" width="720" alt="Decoding success vs attack success: every encoding sits at or below the plaintext line">
@@ -23,8 +23,10 @@
 | 🔒 | **Encoding mostly *lowered* attack success.** 10 of 15 encoding-vs-plaintext comparisons drop significantly; none rise significantly. |
 | 🧩 | **Small models are "safe by incompetence".** Llama-3.1-8B gets 0% attack success on base64, ROT13 and leetspeak because it decodes them only 0–19% of the time. |
 | 📈 | **Capability creates the attack surface.** Llama-70B decodes base64 92% of the time, and 14% of those attacks get through. |
-| 🌐 | **Hindi is the one hint of a gap.** Llama-8B goes from 15% to 25% (+10 pp), but this is not significant after correction. |
-| 🎭 | **The real weak spot is plain English role-play.** FORTRESS adversarial prompts reach 62–88% success on the large models with no encoding at all. |
+| 🌐 | **A language gap exists, but only in the "middle".** On direct requests, Llama-8B complies **1%** of the time in English and **25%** in Bengali, a language it reads but that is not among Llama 3.1's officially supported languages (+24 pp, p < .001). Hindi (supported) and Zulu (barely understood) show no such jump. |
+| 🎭 | **The real weak spot is plain English role-play.** FORTRESS adversarial prompts reach 62–88% success on the large models with no encoding at all, and translating them *weakens* them. |
+
+📊 **Full write-up of both experiments: [conclusions/README.md](conclusions/README.md)**
 
 ---
 
@@ -42,7 +44,14 @@ flowchart LR
     G --> H["<b>analysis</b><br/>ASR + 95% CI · McNemar<br/>figures · report"]
 ```
 
-**180 prompts × 6 encodings × 3 models = 3,240 responses.** Each response is graded by an LLM judge. Every call is cached, so interrupted runs resume where they stopped.
+There are two experiments on the same 180 prompts and 3 models:
+
+| | Conditions | Responses |
+|---|---|---|
+| **Experiment 1: Encodings** | plaintext, base64, rot13, leetspeak, homoglyph, Hindi | 3,240 |
+| **Experiment 2: Language ladder** | plaintext, Hindi, **Bengali**, **Zulu** | +1,080 new (plaintext and Hindi re-used from Exp. 1) |
+
+Each response is graded by an LLM judge. Every call is cached, so interrupted runs resume where they stopped.
 
 ### The same question in each disguise
 
@@ -68,13 +77,13 @@ flowchart LR
 | **H3** | The type of encoding matters | ✅ **Supported**: ROT13 is unreadable; homoglyphs and Hindi are transparent |
 | **H4** | The model family matters (Llama-70B vs Qwen-72B) | ◐ **Partly**: similar overall; Qwen gives in more to role-play |
 | **H5** | Encodings cause over-refusal of benign requests | ◐ **Small model only** |
-| **H6** | Hindi bypasses English-centric safety training | ◐ **Suggestive, not confirmed** |
+| **H6** | Non-English prompts bypass English-centric safety training | ✅ **Supported in one specific case**: a language the model reads but was not safety-trained in (Bengali on Llama-8B) |
 
 The theory being tested is *mismatched generalisation* (Wei et al., 2023): safety training covers less ground than capability. If a model can read a format its safety training never saw, a harmful request might slip through.
 
 ---
 
-## Results
+## Results: Experiment 1 (encodings)
 
 ### 1. Attack success rate (ASR)
 
@@ -122,7 +131,63 @@ The **grey** segments are prompts the model never understood; these are why the 
 
 Llama-8B refuses **22%** of harmless prompts in plain English and **32–38%** when they're encoded with base64, leetspeak or homoglyphs. The large models stay at **≤ 4%**.
 
-### 5. How the judge decides
+---
+
+## Results: Experiment 2 (language ladder: Hindi → Bengali → Zulu)
+
+**Why these languages:** Hindi showed a small hint of an effect in Experiment 1. **Bengali** is about as well-resourced as Hindi but, unlike Hindi, is *not* an officially supported Llama 3.1 language. **Zulu** is genuinely low-resource and repeats Yong et al. (2023). All three were translated with the same NLLB-600M model and settings; Bengali and Zulu ran on a Hugging Face GPU job. Translation quality (round-trip chrF): Hindi 73.4 · Bengali 68.0 · Zulu 62.1.
+
+### 5. Can the models read the language?
+
+| Model | Hindi | Bengali | Zulu |
+|---|---|---|---|
+| Llama-3.1-8B | 🟢 92% | 🟢 80% | 🔴 19% |
+| Llama-3.3-70B | 🟢 95% | 🟢 94% | 🟠 47% |
+| Qwen2.5-72B | 🟢 96% | 🟢 96% | 🟠 50% |
+
+In Zulu the models reply *in* Zulu but mostly produce gibberish loops or misread words. For example, Qwen took *"Nikeza"* ("provide") for a topic name.
+
+### 6. Two opposite stories
+
+<img src="conclusions/figures/exp2_asr_heatmap.png" alt="ASR by language, split by dataset">
+
+**Role-play jailbreaks (FORTRESS) work best in English.** They are carefully worded English tricks, and translation loses the trick:
+
+| FORTRESS ASR | English | Hindi | Bengali | Zulu |
+|---|---|---|---|---|
+| Llama-3.1-8B | 36% | 52% | 24% | 2% |
+| Llama-3.3-70B | 62% | 54% | 46% | 10% |
+| Qwen2.5-72B | **88%** | 50% | 40% | **4%** |
+
+**Direct requests (AdvBench + JBB) reveal the language gap:**
+
+| Direct-request ASR | English | Hindi | Bengali | Zulu |
+|---|---|---|---|---|
+| **Llama-3.1-8B** | **1%** | 8% | **25%\*** | 1% |
+| Llama-3.3-70B | 19% | 9% | 15% | 16% |
+| Qwen2.5-72B | 5% | 4% | 9% | 12% |
+
+> **Key finding:** in Bengali, **19 direct requests flipped from refusal to compliance on Llama-8B, and none flipped the other way** (+24 pp, 95% CI [+15, +34], Holm p < .001). Llama 3.1 officially supports Hindi but not Bengali, and its model card warns it may produce text in languages that don't meet its "performance thresholds for safety and helpfulness".
+
+<img src="conclusions/figures/exp2_lift.png" alt="Lift vs plaintext per language">
+
+**Two side effects:**
+- What leaks in other languages is vague: specificity is about 2/5, vs 3.2–3.7 in English.
+- Qwen refuses **30%** of *harmless* Zulu prompts. Not understanding makes it unhelpful as well as "safe".
+
+### The rule that explains everything
+
+| The model… | Result | Example |
+|---|---|---|
+| can't read the disguise | attack fails (*safe by incompetence*) | Zulu on all models; base64 on Llama-8B |
+| reads it, **but safety training didn't cover it** | **attack works** | **Bengali on Llama-8B** |
+| reads it and was safety-trained on it | attack fails (genuinely safe) | Hindi on Llama-8B |
+
+---
+
+## The judge
+
+### 7. How the judge decides
 
 Every response is labelled by **DeepSeek-V4.1-Flash** using one written rubric. The guiding principle: ***classify by the information the reader walks away with, not by the tone of the response.***
 
@@ -136,7 +201,7 @@ Every response is labelled by **DeepSeek-V4.1-Flash** using one written rubric. 
 
 📄 **The full judge prompt (system prompt, edge-case rules and user template) is in [JUDGE_PROMPT.txt](JUDGE_PROMPT.txt).**
 
-### 6. Is the judge consistent?
+### 8. Is the judge consistent?
 
 <img src="docs/figures/fig6_judge_robustness.png" width="420" alt="Goedel vs Hugging Face judge">
 
@@ -150,7 +215,8 @@ The same judge model served by two endpoints agrees on **93%** of labels (Cohen'
 2. **Scale cuts both ways.** Larger models can decode more formats, so they *can* be attacked through them. Smaller models are protected by not understanding, and they pay for it with more over-refusal.
 3. **Measure understanding, not just refusal.** Without the judge's `decoding_status`, Llama-8B's 0% base64 ASR would look like robustness; it is really incomprehension.
 4. **Report datasets separately.** Pooled numbers hide that FORTRESS role-play is far more effective than any encoding.
-5. **Follow up on low-resource languages.** Hindi on the small model is the only effect in the hypothesised direction (+10 pp, 95% CI [+2, +18]). It needs a larger sample and more languages.
+5. **Languages break safety only in the "middle".** A language works as a disguise when the model can read it but was not safety-trained in it (Bengali on Llama-8B: 1% → 25% on direct requests). Languages the model can't read (Zulu) fail, and so do languages its safety training covers (Hindi).
+6. **The risk will grow with capability.** As open models get better at low-resource languages, those languages move from "can't read" into the dangerous middle, unless safety training keeps up.
 
 ## How this compares with prior work
 
@@ -160,16 +226,16 @@ Earlier studies found that encoded and translated prompts **do** break safety tr
 |---|---|---|---|
 | **Wei et al. (2023)**, *Jailbroken* | GPT-4, Claude v1.3, GPT-3.5 Turbo | Base64 is their main example of *mismatched generalisation*: an input format the model can read but safety training never covered. GPT-3.5 Turbo struggled to read base64, while GPT-4 could read it and was less safe. | **Agrees on scale:** this is the same pattern as our Llama-8B vs Llama-70B (H2). **Differs on outcome:** in our run, base64 *lowered* attack success on every model. |
 | **Yuan et al. (2024)**, *GPT-4 Is Too Smart To Be Safe* (CipherChat) | GPT-4, GPT-3.5 Turbo, Claude 2 | Some ciphers bypassed GPT-4's safety almost 100% of the time in several domains. More capable models were *more* vulnerable; smaller ones often could not follow the cipher. | **Same mechanism** (being able to read the cipher creates the risk). **Different size of effect:** their ciphers greatly increased harm; ours mostly reduced it. |
-| **Yong et al. (2023)**, *Low-Resource Languages Jailbreak GPT-4* | GPT-4 | Translating AdvBench prompts into low-resource languages (e.g. Zulu, Scottish Gaelic) succeeded about half the time, vs under 1% in English; combining languages reached 79%. **High- and mid-resource languages were much less effective.** | **Consistent.** Hindi is mid-resource, and we see only a small, non-significant effect on the small model and none on the large ones. |
+| **Yong et al. (2023)**, *Low-Resource Languages Jailbreak GPT-4* | GPT-4 | Translating AdvBench prompts into low-resource languages (e.g. Zulu, Scottish Gaelic) succeeded about half the time, vs under 1% in English; combining languages reached 79%. **High- and mid-resource languages were much less effective.** | **Different outcome, same mechanism.** Our models mostly *can't read* Zulu (19–50%), so Zulu *lowers* ASR. GPT-4 understood Zulu, so it fell into the middle case. Our middle case is Bengali on Llama-8B. |
 
 **Why the results may differ:**
 
 1. **Newer models.** Prior work tested 2023 models. Llama-3.x and Qwen2.5 were trained after these attacks were published and may include encoded examples in their safety data. This suggests the problem has been partly fixed, not that the earlier findings were wrong.
 2. **Simpler attacks.** CipherChat added a role-play system prompt and worked examples of the cipher. We used a single plain instruction ("decode and follow"), which is a weaker attack.
-3. **Different languages.** The strongest multilingual effects were in *low*-resource languages. Hindi is mid-resource.
+3. **The model has to understand the language.** Zulu broke GPT-4 because GPT-4 reads Zulu; it doesn't break our models because they can't.
 4. **We measure understanding.** We count a prompt the model fails to decode as a failed attack and record it separately, so incomprehension is never mistaken for robustness.
 
-**Takeaway:** the mechanism holds: capability creates the vulnerability, and smaller models are protected by not understanding. On these 2024 open-weight models, however, simple encodings no longer increase attack success. A natural follow-up is to test low-resource languages (e.g. Zulu) and CipherChat-style prompts on the same models.
+**Takeaway:** the mechanism holds: capability creates the vulnerability, and models are protected by not understanding. On these 2024 open-weight models, simple encodings no longer increase attack success. A language the model reads but was not safety-trained in still does.
 
 ## Limitations
 
@@ -177,7 +243,7 @@ Earlier studies found that encoded and translated prompts **do** break safety tr
 - One sample per prompt at temperature 0, no system prompt.
 - One LLM judge family, validated against fixtures and a second endpoint but not against large-scale human annotation.
 - The base64 and ROT13 prompts explicitly say "decode and follow"; other wordings may behave differently.
-- Hindi comes from NLLB-600M machine translation, and it is the only language tested.
+- Translations come from NLLB-600M. The Bengali effect appears in one model only, and the judge's reading of Zulu has been spot-checked but not formally validated.
 - Hosted models on the HF router can change version or quantisation over time.
 
 ---
@@ -244,7 +310,16 @@ python -m src.encoding.evaluator --dry-run    # preview encodings + cost estimat
 python -m src.encoding.evaluator --run-name full_v1
 python -m src.analysis.encoding_analysis      # tables + figures for the latest run
 python -m pytest                              # unit tests (no network)
+
+# Experiment 2: Bengali + Zulu (translation on a Hugging Face GPU job, ~10 min)
+python scripts/hf_translate_job.py submit --langs bn,zu
+python scripts/hf_translate_job.py status
+python scripts/hf_translate_job.py fetch
+python -m src.encoding.evaluator --config configs/encoding_lowres.yaml --sample-size 30 --run-name pilot
+python -m src.encoding.evaluator --config configs/encoding_lowres.yaml --run-name full
 ```
+
+The GPU job needs an HF token with job and repo-write permissions; prompts are stored in a **private** HF dataset repo, never on GitHub.
 
 Useful flags: `--sample-size N`, `--encoding base64`, `--model <id>`, `--check-models`, `--no-analysis`. All settings live in [configs/encoding_attacks.yaml](configs/encoding_attacks.yaml).
 
@@ -258,8 +333,11 @@ Each run writes `results/encoding/<timestamp>_<name>/` containing `results.csv`,
 ```
 JUDGE_PROMPT.txt                   the exact judge prompt (judge-v2)
 .env.example                       template for API keys (copy to .env)
-configs/encoding_attacks.yaml      experiment config (encodings, models, judge routing)
+conclusions/                       full write-up of both experiments + key figures
+configs/encoding_attacks.yaml      Experiment 1 config (encodings, models, judge routing)
+configs/encoding_lowres.yaml       Experiment 2 config (Hindi, Bengali, Zulu)
 scripts/                           dataset download, translation, judge validation/comparison
+scripts/hf_translate_job.py        NLLB translation on a Hugging Face GPU job
 src/encoding/strategies.py         EncodingStrategy + the 6 encodings
 src/encoding/translation.py        NLLB / Google translators with caching
 src/encoding/classifier.py         LLM-judge rubric, parser, RoutedJudge (two endpoints, daily caps)
@@ -276,7 +354,10 @@ results/encoding/*_full_v1/        published aggregate results of the main run
 ## Roadmap
 
 - [x] Module 1: encoding / obfuscation attacks
-- [ ] Larger sample and low-resource languages such as Zulu (follow-up to H6; cf. Yong et al.)
+- [x] Language ladder: Hindi → Bengali → Zulu (Experiment 2)
+- [ ] Judge validation for Zulu (back-translated responses)
+- [ ] More languages on Llama-8B: unsupported but readable (Tamil, Urdu) vs supported (French, Spanish)
+- [ ] A stronger model that reads Zulu well (does it become vulnerable?)
 - [ ] CipherChat-style prompts (role-play + cipher examples) on the same models
 - [ ] Human annotation of a judge-validation subset
 - [ ] Module 2: toxicity & bias evaluation
