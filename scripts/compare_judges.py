@@ -9,7 +9,7 @@ Usage
 -----
     python scripts/compare_judges.py                       # 5 fixtures + 40 real responses
     python scripts/compare_judges.py --n-real 60
-    python scripts/compare_judges.py --runs results/encoding/*_smoke4 results/encoding/*_smoke_hi
+    python scripts/compare_judges.py --runs results/encoding/*_full_v1
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ def load_items(run_globs: list[str], n_real: int, seed: int) -> list[dict]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--runs", nargs="*", default=["results/encoding/*_smoke4", "results/encoding/*_smoke_hi"])
+    parser.add_argument("--runs", nargs="*", default=["results/encoding/*_full_v1", "results/encoding_lowres/*_full"])
     parser.add_argument("--n-real", type=int, default=40)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--concurrency", type=int, default=3, help="per judge (Goedel allows 4 in flight)")

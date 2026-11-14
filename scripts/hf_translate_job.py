@@ -114,6 +114,7 @@ def cmd_submit(args) -> None:
         print("DRY RUN - would submit:\n ", " ".join(command[2:]))
         return
     job = api.run_job(image="python:3.12", command=command, secrets={"HF_TOKEN": token}, flavor=args.flavor,
+                      env={"PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"},
                       timeout=args.timeout, labels={"name": f"translate-{args.langs.replace(',', '-')}"})
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(json.dumps({"job_id": job.id, "url": job.url, "data_repo": repo, "tag": args.tag,
@@ -165,9 +166,18 @@ def cmd_status(args) -> None:
     job_id = args.job_id or _state()["job_id"]
     info = api.inspect_job(job_id=job_id)
     print(f"{job_id}: {info.status.stage}  {info.status.message or ''}\n  {info.url}")
-    logs = list(api.fetch_job_logs(job_id=job_id))
-    print("--- last log lines ---")
-    print("\n".join(str(line) for line in logs[-args.lines:]))
+    import re
+
+    # tqdm redraws one line with '\r', so split on both '\r' and '\n' to get readable lines.
+    text = "\n".join(str(line) for line in api.fetch_job_logs(job_id=job_id))
+    lines = [ln.strip().replace("\x1b[A", "") for ln in re.split(r"[\r\n]+", text) if ln.strip()]
+    progress = [ln for ln in lines if "->" in ln and "chunk" in ln]
+    if progress:
+        print(f"Progress: {progress[-1]}")
+    events = [ln for ln in lines if ln.startswith("[") and "] " in ln and "notice" not in ln
+              or any(k in ln for k in ("chrF", "Uploaded", "DONE", "Error", "Traceback", "Tesla"))]
+    print("--- key log lines ---")
+    print("\n".join(events[-args.lines:]) or "(none yet)")
 
 
 def cmd_fetch(args) -> None:
@@ -212,7 +222,7 @@ def main(argv: list[str] | None = None) -> None:
     s.add_argument("--branch", default="main")
     s.add_argument("--tag", default="lowres")
     s.add_argument("--model", default=DEFAULT_MODEL)
-    s.add_argument("--batch-size", type=int, default=32)
+    s.add_argument("--batch-size", type=int, default=8)
     s.add_argument("--data-repo", default=None)
     s.add_argument("--dry-run", action="store_true")
     s.set_defaults(func=cmd_submit)
@@ -223,7 +233,7 @@ def main(argv: list[str] | None = None) -> None:
     w.add_argument("--tag", default="lowres")
     w.add_argument("--sha", default=None)
     w.add_argument("--model", default=DEFAULT_MODEL)
-    w.add_argument("--batch-size", type=int, default=32)
+    w.add_argument("--batch-size", type=int, default=8)
     w.set_defaults(func=cmd_worker)
 
     st = sub.add_parser("status", help="job state + last log lines")
