@@ -26,3 +26,7 @@ results/encoding/*
 results/encoding/20261114-130959_full_v1/results.csv
 results/judge_validation/
 results/judge_comparison/
+
+# Experiment 3: prompts/translations and raw responses stay local
+experiment_3/data/
+experiment_3/results/**/results.csv

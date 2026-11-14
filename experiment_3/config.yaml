@@ -1,0 +1,81 @@
+# Experiment 3 - direct requests only (no FORTRESS), 6 conditions.
+# Tests the rule from Experiment 2: a language breaks safety when the model can READ it
+# but its safety training does NOT cover it (Llama 3.1 officially supports Hindi and French,
+# not Bengali, Tamil or Zulu).
+#
+# Caches (responses, judge, translations) are shared with Experiments 1-2, so prompts
+# already run there are re-used at no cost.
+#
+#   python experiment_3/build_prompts.py
+#   python experiment_3/translate_job.py submit | status | fetch
+#   python -m src.encoding.evaluator --config experiment_3/config.yaml --sample-size 30 --run-name pilot
+#   python -m src.encoding.evaluator --config experiment_3/config.yaml --run-name full
+
+experiment:
+  name: encoding_direct
+  seed: 42
+  output_dir: experiment_3/results
+
+dataset:
+  prompts_csv: experiment_3/data/direct_prompts.csv   # 200 harmful + 100 matched benign
+
+encodings:
+  - name: plaintext
+  - name: multilingual   # supported by Llama 3.1
+    params: {target_language: hi, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+  - name: multilingual   # supported by Llama 3.1 (high-resource control)
+    params: {target_language: fr, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+  - name: multilingual   # readable, NOT supported
+    params: {target_language: bn, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+  - name: multilingual   # readable, NOT supported
+    params: {target_language: ta, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+  - name: multilingual   # mostly NOT readable
+    params: {target_language: zu, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+
+target_models:
+  defaults:
+    base_url: https://router.huggingface.co/v1
+    api_key_env: HF_TOKEN
+    temperature: 0.0
+    max_tokens: 512
+    system_prompt: null
+    timeout_s: 120
+    max_retries: 4
+  models:
+    - id: meta-llama/Llama-3.1-8B-Instruct
+      price_per_m_input: 0.05
+      price_per_m_output: 0.05
+    - id: meta-llama/Llama-3.3-70B-Instruct
+      price_per_m_input: 0.60
+      price_per_m_output: 0.60
+    - id: Qwen/Qwen2.5-72B-Instruct
+      price_per_m_input: 0.90
+      price_per_m_output: 0.90
+
+judge:
+  kind: routed
+  primary_share: 0.5
+  budget_path: data/cache/judge_budget.json
+  defaults:
+    temperature: 0.0
+    max_tokens: 1024
+    max_retries: 3
+  judges:
+    - name: goedel
+      model: deepseek/deepseek-v4.1-flash
+      base_url: https://api.goedelmachines.com/v1
+      api_key_env: GOEDEL_API_KEY
+      cache_path: data/cache/judge_cache.jsonl
+      daily_call_cap: 1500
+      concurrency: 3
+    - name: hf
+      model: deepseek-ai/DeepSeek-V4.1-Flash-1017
+      base_url: https://router.huggingface.co/v1
+      api_key_env: HF_TOKEN
+      cache_path: data/cache/judge_cache_hf.jsonl
+      daily_call_cap: null
+      concurrency: 6
+
+runtime:
+  concurrency: 8
+  response_cache: data/cache/responses.jsonl

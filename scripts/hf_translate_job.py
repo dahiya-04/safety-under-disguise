@@ -161,13 +161,12 @@ def _state() -> dict:
     return json.loads(STATE_FILE.read_text(encoding="utf-8"))
 
 
-def cmd_status(args) -> None:
-    api, _ = get_api()
-    job_id = args.job_id or _state()["job_id"]
-    info = api.inspect_job(job_id=job_id)
-    print(f"{job_id}: {info.status.stage}  {info.status.message or ''}\n  {info.url}")
+def print_job_status(api, job_id: str, n_lines: int = 25) -> None:
+    """Job stage + a clean progress line + key log lines (shared with experiment_3)."""
     import re
 
+    info = api.inspect_job(job_id=job_id)
+    print(f"{job_id}: {info.status.stage}  {info.status.message or ''}\n  {info.url}")
     # tqdm redraws one line with '\r', so split on both '\r' and '\n' to get readable lines.
     text = "\n".join(str(line) for line in api.fetch_job_logs(job_id=job_id))
     lines = [ln.strip().replace("\x1b[A", "") for ln in re.split(r"[\r\n]+", text) if ln.strip()]
@@ -177,7 +176,12 @@ def cmd_status(args) -> None:
     events = [ln for ln in lines if ln.startswith("[") and "] " in ln and "notice" not in ln
               or any(k in ln for k in ("chrF", "Uploaded", "DONE", "Error", "Traceback", "Tesla"))]
     print("--- key log lines ---")
-    print("\n".join(events[-args.lines:]) or "(none yet)")
+    print("\n".join(events[-n_lines:]) or "(none yet)")
+
+
+def cmd_status(args) -> None:
+    api, _ = get_api()
+    print_job_status(api, args.job_id or _state()["job_id"], args.lines)
 
 
 def cmd_fetch(args) -> None:

@@ -47,10 +47,24 @@ from matplotlib.patches import Patch  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 EXCLUDED_LABELS = {"GENERATION_ERROR", "JUDGE_ERROR", "NO_ANSWER"}
 ENCODING_ORDER = ["plaintext", "base64", "rot13", "leetspeak", "homoglyph",
-                  "multilingual_hi", "multilingual_bn", "multilingual_zu"]
-LANGUAGE_NAMES = {"hi": "hindi", "bn": "bengali", "zu": "zulu", "ta": "tamil", "ur": "urdu", "gd": "gaelic",
-                  "or": "odia", "as": "assamese", "sat": "santali"}
-SUBSETS = {"all": "All harmful", "direct": "AdvBench + JBB", "fortress": "FORTRESS"}
+                  "multilingual_hi", "multilingual_fr", "multilingual_bn", "multilingual_ta", "multilingual_zu"]
+# Chart labels only (code -> name); unknown codes are shown as the code itself.
+LANGUAGE_NAMES = {"hi": "hindi", "fr": "french", "bn": "bengali", "ta": "tamil", "zu": "zulu"}
+MIXED_SUBSETS = {"all": "All harmful", "direct": "AdvBench + JBB", "fortress": "FORTRESS"}
+DIRECT_SUBSETS = {"all": "All direct requests", "advbench": "AdvBench", "jailbreakbench": "JailbreakBench"}
+SUBSETS = dict(MIXED_SUBSETS)  # set per run by run_analysis() via configure_subsets()
+
+
+def configure_subsets(df: pd.DataFrame) -> dict[str, str]:
+    """FORTRESS present -> all / direct / fortress; direct-only runs -> all / AdvBench / JBB."""
+    SUBSETS.clear()
+    if df["source_dataset"].eq("fortress").any():
+        SUBSETS.update(MIXED_SUBSETS)
+        df["subset"] = np.where(df["source_dataset"].eq("fortress"), "fortress", "direct")
+    else:
+        SUBSETS.update(DIRECT_SUBSETS)
+        df["subset"] = df["source_dataset"]
+    return SUBSETS
 N_BOOT = 2000
 SEED = 42
 
@@ -138,7 +152,7 @@ def load_results(run_dir: Path) -> tuple[pd.DataFrame, list[str], list[str]]:
     df["complied"] = df["classification"].eq("COMPLIANCE")
     df["complied_lenient"] = df["classification"].isin(["COMPLIANCE", "PARTIAL_REFUSAL"])
     df["understood"] = df["encoding_type"].eq("plaintext") | df["decoding_status"].eq("correct")
-    df["subset"] = np.where(df["source_dataset"].eq("fortress"), "fortress", "direct")
+    configure_subsets(df)
 
     summary_path = run_dir / "summary.json"
     models = encodings = None
@@ -422,7 +436,7 @@ def fig_benign(ben: pd.DataFrame, models, encodings, path: Path) -> None:
     axes[1].set_title("Benign prompt answered (COMPLIANCE)")
     axes[0].legend(loc="upper right")
     n = int(ben["n"].max()) if len(ben) else 0
-    fig.suptitle(f"H5 — Benign prompts (FORTRESS benign twins, n={n} per bar; 95% Wilson CI)", x=0.01,
+    fig.suptitle(f"H5 — Benign prompts (matched benign twins, n={n} per bar; 95% Wilson CI)", x=0.01,
                  ha="left", fontweight="bold", fontsize=11)
     fig.savefig(path, dpi=160)
     plt.close(fig)
