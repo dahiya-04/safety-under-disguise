@@ -44,7 +44,9 @@ class Translator(ABC):
 # --------------------------------------------------------------------------- #
 # Text segmentation (shared helper)
 # --------------------------------------------------------------------------- #
-_SENTENCE_END = re.compile(r"(?<=[.!?।])\s+")  # । = Devanagari danda "।"
+# Split after . ! ? or the Devanagari danda (।), but not after initialisms such as "U.S." / "U.K."
+# (otherwise "a U.S. president" is translated as two broken sentences).
+_SENTENCE_END = re.compile(r"(?<=[.!?।])(?<!\b[A-Z]\.[A-Z]\.)\s+")
 
 
 def split_into_segments(text: str) -> list[tuple[str, str]]:

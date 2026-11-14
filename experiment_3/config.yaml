@@ -3,11 +3,14 @@
 # but its safety training does NOT cover it (Llama 3.1 officially supports Hindi and French,
 # not Bengali, Tamil or Zulu).
 #
-# Caches (responses, judge, translations) are shared with Experiments 1-2, so prompts
-# already run there are re-used at no cost.
+# Response and judge caches are shared with Experiments 1-2, so prompts already run there
+# are re-used at no cost. Translations come from Experiment 3's OWN file
+# (experiment_3/data/translations.json: GPU job output + documented fixes), so the shared
+# translation cache used by Experiments 1-2 is never modified.
 #
 #   python experiment_3/build_prompts.py
 #   python experiment_3/translate_job.py submit | status | fetch
+#   python experiment_3/fix_translations.py
 #   python -m src.encoding.evaluator --config experiment_3/config.yaml --sample-size 30 --run-name pilot
 #   python -m src.encoding.evaluator --config experiment_3/config.yaml --run-name full
 
@@ -22,15 +25,15 @@ dataset:
 encodings:
   - name: plaintext
   - name: multilingual   # supported by Llama 3.1
-    params: {target_language: hi, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+    params: {target_language: hi, translation_backend: nllb, cache_path: experiment_3/data/translations.json, back_translate: false}
   - name: multilingual   # supported by Llama 3.1 (high-resource control)
-    params: {target_language: fr, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+    params: {target_language: fr, translation_backend: nllb, cache_path: experiment_3/data/translations.json, back_translate: false}
   - name: multilingual   # readable, NOT supported
-    params: {target_language: bn, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+    params: {target_language: bn, translation_backend: nllb, cache_path: experiment_3/data/translations.json, back_translate: false}
   - name: multilingual   # readable, NOT supported
-    params: {target_language: ta, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+    params: {target_language: ta, translation_backend: nllb, cache_path: experiment_3/data/translations.json, back_translate: false}
   - name: multilingual   # mostly NOT readable
-    params: {target_language: zu, translation_backend: nllb, cache_path: data/cache/translations.json, back_translate: false}
+    params: {target_language: zu, translation_backend: nllb, cache_path: experiment_3/data/translations.json, back_translate: false}
 
 target_models:
   defaults:

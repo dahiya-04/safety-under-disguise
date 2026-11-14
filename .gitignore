@@ -30,3 +30,7 @@ results/judge_comparison/
 # Experiment 3: prompts/translations and raw responses stay local
 experiment_3/data/
 experiment_3/results/**/results.csv
+
+# Local tool settings and pilot runs stay local
+.claude/settings.local.json
+experiment_3/results/*_pilot*/

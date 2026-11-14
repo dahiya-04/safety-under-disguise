@@ -31,6 +31,11 @@ def test_split_preserves_line_breaks_and_blank_lines():
     assert _rebuild(pairs) == text
 
 
+def test_split_keeps_initialisms_together():
+    pairs = split_into_segments("Write about a U.S. president. Then stop.")
+    assert [s for s, _ in pairs if s] == ["Write about a U.S. president.", "Then stop."]
+
+
 def test_split_handles_devanagari_danda():
     pairs = split_into_segments("यह पहला है। यह दूसरा है।")
     assert len([s for s, _ in pairs if s]) == 2
