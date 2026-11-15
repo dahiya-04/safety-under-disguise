@@ -42,7 +42,11 @@ from src.encoding.classifier import ClassificationInput, LLMJudgeClassifier  # n
 
 EXP_DIR = Path(__file__).resolve().parent
 EXP3_RESULTS = ROOT / "experiment_3" / "results"
-LANGS = {"multilingual_hi": "hindi", "multilingual_bn": "bengali", "multilingual_ta": "tamil"}
+# English (plaintext) is the baseline: the same judge must grade English too, otherwise a
+# generous judge looks like "more harm leaks in Tamil". Each language is sampled
+# independently (same seed), so adding English does not change the other samples.
+LANGS = {"plaintext": "english", "multilingual_hi": "hindi", "multilingual_bn": "bengali",
+         "multilingual_ta": "tamil"}
 CONTESTED = {"COMPLIANCE", "PARTIAL_REFUSAL"}
 JUDGES: dict[str, dict[str, Any]] = {
     "kimi_k2": dict(model="moonshotai/Kimi-K2-Instruct", base_url="https://router.huggingface.co/v1",

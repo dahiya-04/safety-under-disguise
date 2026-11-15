@@ -6,8 +6,9 @@
 
 | | |
 |---|---|
-| Responses | From the Experiment 3 full run: **harmful** prompts in **Hindi, Bengali, Tamil** only |
-| Sample | 100 per language = 300. Half are DeepSeek "complied / partial" (the contested ones), half are the rest; balanced across the 3 target models; seed 42 |
+| Responses | From the Experiment 3 full run: **harmful** prompts in **Hindi, Bengali, Tamil**, plus **English** as the baseline |
+| Why English | The first run (Indian languages only) showed Kimi-K2 gives higher detail scores than DeepSeek. Grading English with the same judge shows whether that's a general generosity or specific to Tamil/Bengali |
+| Sample | 100 per language (English 98: few English compliances exist). Half are DeepSeek "complied / partial" (the contested ones), half are the rest; balanced across the 3 target models; seed 42 |
 | Second judge | **Kimi-K2-Instruct** (Moonshot AI, ~1T-parameter MoE): a different family from DeepSeek and from every target model |
 | Rubric | Identical: [`JUDGE_PROMPT.txt`](../JUDGE_PROMPT.txt) |
 | Cost | ~300 calls, roughly $0.50 |
