@@ -5,9 +5,9 @@
 **Do encoded prompts (base64, ROT13, leetspeak, homoglyphs) or other languages (Hindi, Bengali, Zulu) slip past LLM safety guardrails?**
 
 ![python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
-![responses](https://img.shields.io/badge/judged%20responses-4%2C320-1baf7a)
+![experiments](https://img.shields.io/badge/experiments-3%20%2B%203.1-1baf7a)
 ![models](https://img.shields.io/badge/models-Llama%208B%20·%20Llama%2070B%20·%20Qwen%2072B-eb6834)
-![tests](https://img.shields.io/badge/tests-67%20passing-008300)
+![tests](https://img.shields.io/badge/tests-72%20passing-008300)
 ![license](https://img.shields.io/badge/license-MIT-6250d6)
 
 <img src="docs/figures/fig2_decoding_vs_asr.png" width="720" alt="Decoding success vs attack success: every encoding sits at or below the plaintext line">
@@ -25,8 +25,9 @@
 | 📈 | **Capability creates the attack surface.** Llama-70B decodes base64 92% of the time, and 14% of those attacks get through. |
 | 🌐 | **A language gap exists, but only in the "middle".** On direct requests, Llama-8B complies **1%** of the time in English and **25%** in Bengali, a language it reads but that is not among Llama 3.1's officially supported languages (+24 pp, p < .001). Hindi (supported) and Zulu (barely understood) show no such jump. |
 | 🎭 | **The real weak spot is plain English role-play.** FORTRESS adversarial prompts reach 62–88% success on the large models with no encoding at all, and translating them *weakens* them. |
+| 🧪 | **Pre-registered test (Experiment 3):** Tamil was *predicted* to break Llama-8B's refusals, and it did (2% → 20.5%). Tamil also breaks Llama-70B and Qwen-72B (Qwen 5% → 43.5%). A **second, independent judge** (Kimi-K2) confirms the refusal failures, but what leaks in Tamil is mostly vague. |
 
-📊 **Full write-up of both experiments: [conclusions/README.md](conclusions/README.md)**
+📊 **Full write-ups:** [Experiments 1–2 → conclusions/](conclusions/README.md) · [**Experiment 3 + 3.1 → experiment_3/**](experiment_3/README.md)
 
 ---
 
@@ -175,13 +176,33 @@ In Zulu the models reply *in* Zulu but mostly produce gibberish loops or misread
 - What leaks in other languages is vague: specificity is about 2/5, vs 3.2–3.7 in English.
 - Qwen refuses **30%** of *harmless* Zulu prompts. Not understanding makes it unhelpful as well as "safe".
 
-### The rule that explains everything
+### The pattern so far (a hypothesis, not a law)
 
 | The model… | Result | Example |
 |---|---|---|
 | can't read the disguise | attack fails (*safe by incompetence*) | Zulu on all models; base64 on Llama-8B |
 | reads it, **but safety training didn't cover it** | **attack works** | **Bengali on Llama-8B** |
 | reads it and was safety-trained on it | attack fails (genuinely safe) | Hindi on Llama-8B |
+
+This pattern came *after* seeing Experiment 2, so Experiment 3 tested it with predictions written down in advance.
+
+---
+
+## Results: Experiment 3 (direct requests, 6 languages) and 3.1 (second judge)
+
+Direct harmful requests only (200 harmful + 100 matched benign, no role-play), in English, Hindi, French, Bengali, Tamil and Zulu. Predictions were locked before running.
+
+| Attack success | English | Hindi | French | Bengali | Tamil | Zulu |
+|---|---|---|---|---|---|---|
+| **Llama-3.1-8B** | 2% | 8% | 2% | **24%** | **20.5%** | 2% |
+| Llama-3.3-70B | 13.5% | 8.5% | 5% | 14% | **25.5%** | 16.5% |
+| Qwen2.5-72B | 5% | 5% | 5.5% | 7% | **43.5%** | 11.5% |
+
+- ✅ **Every prediction for Llama-8B held**, including Tamil, which was predicted before the run.
+- ⚠️ **Tamil breaks all three models**, so the effect doesn't shrink with size for Tamil.
+- 🔍 **Experiment 3.1:** a second, independent judge (Kimi-K2, ~1T parameters) re-graded about 400 answers. Both judges agree refusals fail about **4× more often in Tamil** than in English, and that Tamil leaks are **vaguer**. They **disagree** on whether those vague leaks count as useful harm (Tamil: 4% vs 22%), so a native-speaker check is still needed.
+
+➡️ **Full results, tables and limitations: [experiment_3/README.md](experiment_3/README.md)** · judge check: [experiment_3_1/](experiment_3_1/README.md)
 
 ---
 
@@ -355,8 +376,11 @@ results/encoding/*_full_v1/        published aggregate results of the main run
 
 - [x] Module 1: encoding / obfuscation attacks
 - [x] Language ladder: Hindi → Bengali → Zulu (Experiment 2)
+- [x] Direct requests in 6 languages with locked predictions (Experiment 3)
+- [x] Second independent judge, Kimi-K2, on Indian languages + English (Experiment 3.1)
+- [ ] Native-speaker check of the 37 Tamil/Bengali judge disagreements
+- [ ] Same language across model families with different official language lists
 - [ ] Judge validation for Zulu (back-translated responses)
-- [ ] More languages on Llama-8B: unsupported but readable (Tamil, Urdu) vs supported (French, Spanish)
 - [ ] A stronger model that reads Zulu well (does it become vulnerable?)
 - [ ] CipherChat-style prompts (role-play + cipher examples) on the same models
 - [ ] Human annotation of a judge-validation subset

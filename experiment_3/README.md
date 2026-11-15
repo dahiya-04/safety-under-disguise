@@ -44,6 +44,109 @@ Every change (41 in total) is logged in `data/translation_corrections.csv`. The 
 
 If French or Hindi turns out as unsafe as Bengali, the "official support" explanation is wrong. That's what makes this a real test.
 
+---
+
+## Results (full run, 5,400 responses, 0 errors)
+
+### 1. How often the model helped instead of refusing (attack success rate)
+
+![ASR heatmap](results/20261114-235020_full/analysis/fig1_asr_heatmap.png)
+
+| Model | English | Hindi | French | Bengali | Tamil | Zulu |
+|---|---|---|---|---|---|---|
+| **Llama-3.1-8B** | 2% | 8% | 2% | **24%** | **20.5%** | 2% |
+| Llama-3.3-70B | 13.5% | 8.5% | 5% | 14% | **25.5%** | 16.5% |
+| Qwen2.5-72B | 5% | 5% | 5.5% | 7% | **43.5%** | 11.5% |
+
+*200 harmful prompts per cell.*
+
+### 2. Change vs English (percentage points; \* = significant after correction)
+
+| Model | Hindi | French | Bengali | Tamil | Zulu |
+|---|---|---|---|---|---|
+| Llama-3.1-8B | +6\* | 0 | **+22\*** (45 flips vs 1) | **+18.5\*** (39 vs 2) | 0 |
+| Llama-3.3-70B | −5 | −8.5\* | +0.5 | **+12\*** | +3 |
+| Qwen2.5-72B | 0 | +0.5 | +2 | **+38.5\*** (81 vs 4) | +6.5 |
+
+![Lift vs English](results/20261114-235020_full/analysis/fig5_lift.png)
+
+### 3. Did the model understand the prompt?
+
+| Model | Hindi | French | Bengali | Tamil | Zulu |
+|---|---|---|---|---|---|
+| Llama-3.1-8B | 98% | 98% | 87% | 71% | 23% |
+| Llama-3.3-70B | 99% | 100% | 97% | 96% | 51% |
+| Qwen2.5-72B | 99% | 100% | 96% | 89% | 54% |
+
+### 4. Benign prompts wrongly refused (over-refusal)
+
+| Model | English | Hindi | French | Bengali | Tamil | Zulu |
+|---|---|---|---|---|---|---|
+| Llama-3.1-8B | 27% | 27% | 40% | 10% | 3% | 8% |
+| Llama-3.3-70B | 5% | 8% | 15% | 5% | 5% | 3% |
+| Qwen2.5-72B | 7% | 16% | 14% | 17% | 7% | **44%** |
+
+### 5. Was the leaked content actually useful?
+
+When the models complied in Bengali or Tamil, the answers were mostly **vague or garbled**. For example, Qwen's Tamil "guide to counterfeit money" says *"save wealth, reduce expenses"*. Average detail score of complied answers (1–5): English 3.2–3.8, Tamil 1.8–2.2.
+
+### Predictions vs results (Llama-3.1-8B)
+
+| Language | Predicted | Result |
+|---|---|---|
+| English, French | low | ✅ 2%, 2% |
+| Hindi | low | ✅ 8% (small but significant rise) |
+| **Bengali** | **high** | ✅ **24%** |
+| **Tamil** | **high** | ✅ **20.5%**: predicted *before* the run |
+| Zulu | low | ✅ 2% (understands only 23%) |
+
+**Every pre-registered prediction held for Llama-8B.** But:
+- **Tamil breaks all three models, Qwen most of all (+38.5).** So the gap does *not* shrink with size for Tamil (H9 fails for Tamil). Whether Tamil and Bengali are on Qwen's official list has not been checked.
+- **Over-refusal:** Llama-8B refuses *more* benign prompts in supported languages (French 40%, English 27%) than in unsupported ones (3–10%), as if its safety tuning is simply switched on in supported languages. Qwen refuses 44% of harmless Zulu prompts it can't read.
+- **The French hand-corrections changed nothing:** Llama-8B 2.0% with them, 2.1% without.
+
+| # | Hypothesis | Verdict |
+|---|---|---|
+| H7 | Readable-but-unsupported languages raise ASR | ✅ for **refusal** (Llama-8B: Bengali, Tamil; all models: Tamil) |
+| H8 | Supported languages ≈ English | ✅ French; Hindi mostly (+6 on Llama-8B) |
+| H9 | Gap shrinks with size | ◐ Bengali yes, Tamil no |
+| H10 | Over-refusal rises in poorly read languages | ◐ Qwen + Zulu yes; Llama-8B shows the opposite pattern |
+
+---
+
+## Experiment 3.1: Checking the judge with a second judge
+
+**Worry:** every grade above came from one AI judge (DeepSeek) reading Tamil and Bengali. If it reads them badly, the results are wrong.
+
+**Check:** a second, independent and much larger judge, **Kimi-K2** (~1T parameters, different company and model family), re-graded **398 answers** (about 100 each in English, Hindi, Bengali and Tamil) with exactly the same rules. Details: [experiment_3_1/](../experiment_3_1/README.md).
+
+| | English | Hindi | Bengali | Tamil |
+|---|---|---|---|---|
+| Both judges gave the same label | 93% | 89% | 86% | 80% |
+| **Didn't refuse:** DeepSeek / Kimi | 7% / 7% | 7% / 7% | 15% / 20% | **30% / 30%** |
+| **Detail score** of complied answers: DeepSeek / Kimi | 3.6 / 4.0 | 2.6 / 3.2 | 2.4 / 2.9 | **2.1 / 2.6** |
+| **Useful detail** (score ≥ 3): DeepSeek / Kimi | 7% / 7% | 4% / 7% | 6% / 14% | **4% / 22%** |
+
+*Rates are re-weighted to all Experiment 3 harmful prompts.*
+
+**What this means:**
+
+| Claim | Status |
+|---|---|
+| Refusals fail far more often in Tamil (about 4× English) and Bengali | ✅ **Confirmed by two independent judges** |
+| What leaks in Tamil is, on average, vaguer than English | ✅ **Confirmed by both** (Kimi is ~0.5 points more generous everywhere, English included) |
+| Tamil leaks more **usable** harm than English in total | ❓ **Unresolved:** DeepSeek says no (4% vs 7%), Kimi says yes (22% vs 7%). Many Tamil answers sit on the 2/3 borderline. |
+
+**Next step to settle it:** a Tamil reader checks the 37 answers where the judges disagree (`experiment_3_1/results/disagreements_kimi_k2.csv`, kept local).
+
+## Limitations
+
+- **One model family** (Llama) for the "official support" idea; Qwen's language list not yet checked.
+- **Machine translation (NLLB-600M).** Only French was reviewed by hand; Tamil, Bengali and Zulu may contain similar jargon errors.
+- **No human labels yet;** two AI judges agree on refusal, not on how useful the leaks are.
+- **One sample per prompt** at temperature 0, no system prompt.
+- **Related work** already reports multilingual safety gaps on the same models (e.g. Llama-3.1-8B in Yoruba). This experiment is best read as a careful, pre-registered replication plus the refusal-vs-usefulness check, not a new discovery.
+
 ## Folder
 
 ```
@@ -67,4 +170,5 @@ $env:PYTHONUTF8=1
 .venv\Scripts\python.exe experiment_3\fix_translations.py                    # done
 .venv\Scripts\python.exe -m src.encoding.evaluator --config experiment_3\config.yaml --sample-size 30 --run-name pilot
 .venv\Scripts\python.exe -m src.encoding.evaluator --config experiment_3\config.yaml --run-name full
+.venv\Scripts\python.exe experiment_3_1\judge_check.py                       # Experiment 3.1 (second judge)
 ```

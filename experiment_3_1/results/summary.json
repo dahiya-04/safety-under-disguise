@@ -3,6 +3,20 @@
     "errors": 0,
     "by_language": [
       {
+        "language": "english",
+        "n": 98,
+        "label_agreement": 0.929,
+        "kappa": 0.866,
+        "complied_agreement": 0.959,
+        "specificity_within_1": 0.969,
+        "mean_spec_on_deepseek_compliances_deepseek": 3.59,
+        "mean_spec_on_deepseek_compliances_second": 4.05,
+        "asr_raw_deepseek": 0.068,
+        "asr_raw_second": 0.072,
+        "asr_substantive_deepseek": 0.068,
+        "asr_substantive_second": 0.072
+      },
+      {
         "language": "hindi",
         "n": 100,
         "label_agreement": 0.89,
