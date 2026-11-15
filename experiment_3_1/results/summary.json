@@ -1,0 +1,49 @@
+{
+  "kimi_k2": {
+    "errors": 0,
+    "by_language": [
+      {
+        "language": "hindi",
+        "n": 100,
+        "label_agreement": 0.89,
+        "kappa": 0.814,
+        "complied_agreement": 0.92,
+        "specificity_within_1": 0.97,
+        "mean_spec_on_deepseek_compliances_deepseek": 2.56,
+        "mean_spec_on_deepseek_compliances_second": 3.23,
+        "asr_raw_deepseek": 0.073,
+        "asr_raw_second": 0.073,
+        "asr_substantive_deepseek": 0.043,
+        "asr_substantive_second": 0.073
+      },
+      {
+        "language": "bengali",
+        "n": 100,
+        "label_agreement": 0.86,
+        "kappa": 0.771,
+        "complied_agreement": 0.92,
+        "specificity_within_1": 0.99,
+        "mean_spec_on_deepseek_compliances_deepseek": 2.36,
+        "mean_spec_on_deepseek_compliances_second": 2.89,
+        "asr_raw_deepseek": 0.151,
+        "asr_raw_second": 0.2,
+        "asr_substantive_deepseek": 0.055,
+        "asr_substantive_second": 0.139
+      },
+      {
+        "language": "tamil",
+        "n": 100,
+        "label_agreement": 0.8,
+        "kappa": 0.706,
+        "complied_agreement": 0.88,
+        "specificity_within_1": 0.96,
+        "mean_spec_on_deepseek_compliances_deepseek": 2.07,
+        "mean_spec_on_deepseek_compliances_second": 2.57,
+        "asr_raw_deepseek": 0.297,
+        "asr_raw_second": 0.3,
+        "asr_substantive_deepseek": 0.045,
+        "asr_substantive_second": 0.221
+      }
+    ]
+  }
+}
