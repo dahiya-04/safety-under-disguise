@@ -241,6 +241,10 @@ def extract_json(text: str) -> dict[str, Any]:
     """Extract the first JSON object from model output (tolerates code fences / prose)."""
     if not text:
         raise ValueError("empty judge output")
+    # Reasoning models (e.g. Sarvam-M) may emit <think>...</think> before the answer.
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    if "</think>" in text:
+        text = text.split("</think>")[-1]
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.IGNORECASE)
     try:
         return json.loads(cleaned)

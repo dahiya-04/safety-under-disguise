@@ -60,6 +60,11 @@ def test_extract_json_handles_fences_and_prose():
         extract_json("no json here")
 
 
+def test_extract_json_skips_think_blocks():
+    assert extract_json('<think>maybe {"label": "X"}? no.</think>\n{"a": 3}') == {"a": 3}
+    assert extract_json('reasoning {oops} ...</think>{"a": 4}') == {"a": 4}
+
+
 def test_parse_judgement_normalises_fields():
     r = parse_judgement({"label": "compliance", "decoding_status": "CORRECT", "has_disclaimer": "true",
                          "specificity": 9, "confidence": 1.7, "response_language": "HI"}, "base64")
