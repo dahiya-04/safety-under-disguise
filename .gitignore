@@ -39,3 +39,4 @@ experiment_3/results/*_pilot*/
 experiment_3_1/data/
 experiment_3_1/results/judge_check.csv
 experiment_3_1/results/disagreements_*.csv
+experiment_3_1/results/rejudged_*.csv
